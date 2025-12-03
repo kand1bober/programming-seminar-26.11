@@ -1,45 +1,18 @@
 #ifndef BOGATYRS_HEADER
 #define BOGATYRSHEADER
 
-typedef enum {
-    kFollower,
-    kCandidate,
-    kLeader,
-} ProcessRole;
+#define kBogatyrsNum 128
 
 typedef struct {
-    //consensus info
-    int term;
-    ProcessRole proc_role;
-    int self_pid;
-    int election_time;
+    int election_done;        // 0 = не завершены, 1 = завершены
+    pid_t leader_pid;         // PID лидера
+    pthread_mutex_t mutex;    // мьютекс для защиты состояния
+    pid_t pids[kBogatyrsNum];
+    int count;
+} SharedState;
 
-    //text info
-    int self_letter;
-    char str[128]; //full string to sing
-
-    //shmem info
-    //shmem is used for making data base of pids
-    void* shm_ptr;
-    int shm_fd;
-    char shm_name[128];
-
-    //msg_queue info
-    int qid;
-} BogatyrInfo;
-
-void bogatyr(int qid);
+void bogatyr();
 
 int random_in_range(int min, int max);
-
-int collect_votes(BogatyrInfo* bog_info);
-
-void make_election(BogatyrInfo* bog_info);
-
-void follower(BogatyrInfo* bog_info);
-
-void candidate(BogatyrInfo* bog_info);
-
-void leader(BogatyrInfo* bog_info);
 
 #endif

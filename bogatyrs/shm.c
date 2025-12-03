@@ -1,38 +1,66 @@
 #include "shm.h"
+#include "bog.h"
 
 #define SHMEM_SIZE 4096
  
 void make_shmem(const char* name, int* ret_fd, void** ret_ptr)
 {
-    int fd = shm_open(name, O_CREAT | O_RDWR, 0666);
-    ftruncate(fd, SHMEM_SIZE);
-    void *ptr = mmap(NULL, SHMEM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    if (ptr == MAP_FAILED) {
+    *ret_fd = shm_open(name, O_CREAT | O_RDWR, 0666);
+    ftruncate(*ret_fd, sizeof(SharedState));
+
+    *ret_ptr = mmap(NULL, sizeof(SharedState), PROT_READ | PROT_WRITE, MAP_SHARED, *ret_fd, 0);
+    if (*ret_ptr == MAP_FAILED) {
         perror("mmap");
         exit(EXIT_FAILURE);
     }
 
-    memset(ptr, 0, SHMEM_SIZE);
+    memset(*ret_ptr, 0, SHMEM_SIZE);
 
-    *ret_fd = fd;
-    *ret_ptr = ptr;
+    //init mutex
+    SharedState* state = (SharedState*)(*ret_ptr);
+    pthread_mutexattr_t attr;
+    pthread_mutexattr_init(&attr);
+    pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+    pthread_mutex_init(&state->mutex, &attr);
+    pthread_mutexattr_destroy(&attr);
+
+    // Инициализируем остальное
+    state->election_done = 0;
+    state->leader_pid = 0;
+    state->count = 0;
 }   
 
 void join_shmem(const char* name, int* ret_fd, void** ret_ptr)
 {       
-    int fd = shm_open(name, O_RDWR, 0666); //open already existing shmem
-    *ret_fd = fd;
+    *ret_fd = shm_open(name, O_RDWR, 0666); //open already existing shmem
+    if (*ret_fd < 0) {
+        perror("shm_open");
+        exit(EXIT_FAILURE);
+    }
 
-    void* ptr = mmap(NULL, SHMEM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    *ret_ptr = ptr;
+    *ret_ptr = mmap(NULL, sizeof(SharedState), PROT_READ | PROT_WRITE, MAP_SHARED, *ret_fd, 0);
+    if (*ret_ptr == MAP_FAILED) {
+        perror("mmap");
+        exit(EXIT_FAILURE);
+    }
 }
 
 void close_shmem(void* shm_ptr, int shm_fd, const char* shm_name)
 {
-    munmap(shm_ptr, SHMEM_SIZE);
-    close(shm_fd);
+    if (munmap(shm_ptr, sizeof(SharedState)) < 0) {
+        perror("munmap");
+        exit(EXIT_FAILURE);
+    }
 
-    shm_unlink(shm_name);
+    if (close(shm_fd) < 0) {
+        perror("close");
+        exit(EXIT_FAILURE);
+    }  
+
+    if (shm_unlink(shm_name) < 0) {
+        perror("shm_unlink");
+        exit(EXIT_FAILURE);
+    }
 }
 
 int get_db_size(void* db)

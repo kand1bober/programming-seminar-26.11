@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <pthread.h>
 
 #ifndef SHMEM_HEADER
 #define SHMEM_EDER
