@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "*.txt": "code-text-binary",
+        "signal.h": "c",
+        "stdio.h": "c"
+    }
+}

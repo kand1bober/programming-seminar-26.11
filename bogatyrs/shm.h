@@ -16,4 +16,10 @@ void join_shmem(const char* name, int* ret_fd, void** ret_ptr);
 
 void close_shmem(void* shm_ptr, int shm_fd, const char* shm_name);
 
+int get_db_size(void* db);
+
+void add_pid_to_db(void* pid_db, int pid);
+
+int get_pid_from_db(void* pid_db, int pid_num);
+
 #endif
